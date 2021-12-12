@@ -6,11 +6,11 @@ use num::Float;
 
 use rand::prelude::{Distribution, SliceRandom};
 
-#[derive(Debug, Copy, Clone)]
-struct Vector3D {
-    x: f64,
-    y: f64,
-    z: f64,
+#[derive(Debug, Copy, Clone, Serialize)]
+pub struct Vector3D {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
 }
 
 impl Index<usize> for Vector3D {
@@ -181,20 +181,18 @@ impl Box {
     }
 }
 
+use serde_derive::Serialize;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub struct Collision {
-    position: Vector3D,
-    wall_index: u8,
-    impulse: f64,
-    time: f64,
+    pub position: Vector3D,
+    pub wall_index: u8,
+    pub impulse: f64,
+    pub time: f64,
 }
 
-fn approx_equal(a: f64, b: f64, decimal_places: u8) -> bool {
-    let factor = 10.0f64.powi(decimal_places as i32);
-    let a = (a * factor).trunc();
-    let b = (b * factor).trunc();
-    a == b
+fn approx_equal(a: f64, b: f64) -> bool {
+    (a.abs() - b.abs()).abs() < 2e-9
 }
 
 impl Collision {
@@ -205,19 +203,19 @@ impl Collision {
         let mut wall_index: u8 = 7;
         
         let reflection_sides = Vector3D {
-            x: if approx_equal(part.position.x.abs(), half_side_length, 8) {
+            x: if approx_equal(part.position.x.abs(), half_side_length) {
                 wall_index = if part.position.x.is_sign_negative() { 0 } else { 1 };
                 1.0
             } else {
                 0.0
             },
-            y: if approx_equal(part.position.y.abs(), half_side_length, 8) {
+            y: if approx_equal(part.position.y.abs(), half_side_length) {
                 wall_index = if part.position.y.is_sign_negative() { 2 } else { 3 };
                 1.0
             } else {
                 0.0
             },
-            z: if approx_equal(part.position.z.abs(), half_side_length, 8) {
+            z: if approx_equal(part.position.z.abs(), half_side_length) {
                 wall_index = if part.position.z.is_sign_negative() { 4 } else { 5 };
                 1.0
             } else {
@@ -267,6 +265,7 @@ pub fn rms_speed(mass: f64, temperature: f64) -> f64 {
 }
 
 use rand::{thread_rng, Rng};
+use serde::Serialize;
 
 fn generate_position(half_side_length: f64) -> Vector3D {
     let x = thread_rng().gen_range(-half_side_length..=half_side_length);
@@ -350,6 +349,8 @@ pub fn simulate<F: Fn(f64, f64) -> f64>(temp: f64, volume: f64, molecule_mass: f
         }
         
         pressures.push((cumulative_impulse/total_time)/b.side_area());
+
+        // println!("{:+e}", (cumulative_impulse/total_time)/b.side_area());
     }
 
     return (all_sides, pressures)
