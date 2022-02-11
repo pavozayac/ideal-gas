@@ -24,7 +24,7 @@ fn main() {
 
     if args[1] == "gay-lussac" {
         let dir_path = &format!(
-            "Gay_Lussac_{}",
+            "Gay_Lussac_{}.csv",
             Utc::now().to_rfc3339().replace(":", "-").replace("-", "_").replace("+", "_").replace(".", "_")
         );
 
@@ -56,7 +56,7 @@ fn main() {
 
         let mut all_pressures = Vec::new();
 
-        for temp in 1..=500 {
+        for temp in args[2].parse::<i32>().unwrap()..=args[3].parse::<i32>().unwrap() {
             let t = temp;
             let (collisions, mut pressures) = simulate(
                 temp as f64,
@@ -67,34 +67,37 @@ fn main() {
             );
             pressures.push(temp as f64);
             pressures.push(volume as f64);
+
             all_pressures.push(pressures);
 
-            for side in collisions {
-                let ind = side[0].wall_index;
-                let collisions_file = fs::File::create(Path::new(&format!(
-                    "{}/t-{}-s-{}-collisions.csv",
-                    dir_path,
-                    t,
-                    side[0].wall_index
-                )))
-                .expect("Cannot open file");
-                let mut collisions_bw = BufWriter::new(collisions_file);
-                let mut csv_c = csv::Writer::from_writer(collisions_bw);
+            if temp == 1 || temp == 500 {
+                for side in collisions {
+                    let ind = side[0].wall_index;
+                    let collisions_file = fs::File::create(Path::new(&format!(
+                        "{}/t-{}-s-{}-collisions.csv",
+                        dir_path,
+                        t,
+                        side[0].wall_index
+                    )))
+                    .expect("Cannot open file");
+                    let mut collisions_bw = BufWriter::new(collisions_file);
+                    let mut csv_c = csv::Writer::from_writer(collisions_bw);
 
-                for col in side {
-                    let record = CollisionRecord {
-                        x: col.position.x,
-                        y: col.position.y,
-                        z: col.position.z,
-                        impulse: col.impulse,
-                        time: col.time,
-                        wall_index: col.wall_index
-                    };
+                    for col in side {
+                        let record = CollisionRecord {
+                            x: col.position.x,
+                            y: col.position.y,
+                            z: col.position.z,
+                            impulse: col.impulse,
+                            time: col.time,
+                            wall_index: col.wall_index
+                        };
 
-                    csv_c.serialize(record).expect("Could not serialize");
+                        csv_c.serialize(record).expect("Could not serialize");
+                    }
+
+                    csv_c.flush().expect("Could not flush.");
                 }
-
-                csv_c.flush().expect("Could not flush.");
             }
         }
 
@@ -107,7 +110,7 @@ fn main() {
         csv_p.flush().expect("Could not flush.");
     } else if args[1] == "boyle" {
         let dir_path = &format!(
-            "Boyle_{}",
+            "Boyle_{}.csv",
             Utc::now().to_rfc3339().replace(":", "-").replace("-", "_").replace("+", "_").replace(".", "_")
         );
 
@@ -139,7 +142,7 @@ fn main() {
 
         let mut all_pressures = Vec::new();
 
-        for vol in 1..=500 {
+        for vol in args[2].parse::<i32>().unwrap()..=args[3].parse::<i32>().unwrap() {
             let v = 0.001 * vol as f64;
             let (collisions, mut pressures) = simulate(
                 temperature,
@@ -150,35 +153,37 @@ fn main() {
             );
             pressures.push(temperature as f64);
             pressures.push(v as f64);
+
             all_pressures.push(pressures);
 
-            for side in collisions {
-                let ind = side[0].wall_index;
-                let collisions_file = fs::File::create(Path::new(&format!(
-                    "{}/v-{}-s-{}-collisions.csv",
-                    dir_path,
-                    v,
-                    side[0].wall_index
-                )))
-                .expect("Cannot open file");
-                let mut collisions_bw = BufWriter::new(collisions_file);
-                let mut csv_c = csv::Writer::from_writer(collisions_bw);
-
-                for col in side {
-                    let record = CollisionRecord {
-                        x: col.position.x,
-                        y: col.position.y,
-                        z: col.position.z,
-                        impulse: col.impulse,
-                        time: col.time,
-                        wall_index: col.wall_index
-                    };
-
-                    csv_c.serialize(record).expect("Could not serialize");
-                }
-
-                csv_c.flush().expect("Could not flush.");
-            }
+            if vol == 1 || vol == 500 {
+                for side in collisions {
+                    let ind = side[0].wall_index;
+                    let collisions_file = fs::File::create(Path::new(&format!(
+                        "{}/v-{}-s-{}-collisions.csv",
+                        dir_path,
+                        v,
+                        side[0].wall_index
+                    )))
+                    .expect("Cannot open file");
+                    let mut collisions_bw = BufWriter::new(collisions_file);
+                    let mut csv_c = csv::Writer::from_writer(collisions_bw);
+    
+                    for col in side {
+                        let record = CollisionRecord {
+                            x: col.position.x,
+                            y: col.position.y,
+                            z: col.position.z,
+                            impulse: col.impulse,
+                            time: col.time,
+                            wall_index: col.wall_index
+                        };
+    
+                        csv_c.serialize(record).expect("Could not serialize");
+                    }
+    
+                    csv_c.flush().expect("Could not flush.");
+                }            }
         }
 
         

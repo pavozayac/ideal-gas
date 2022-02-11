@@ -1,9 +1,7 @@
 use std::f64::INFINITY;
 use std::ops::{Add, Div, Index, IndexMut, Mul, Sub};
-
 use num::traits::Pow;
 use num::Float;
-
 use rand::prelude::{Distribution, SliceRandom};
 
 #[derive(Debug, Copy, Clone, Serialize)]
@@ -239,6 +237,9 @@ impl Collision {
     }
 }
 
+use rand::{thread_rng, Rng};
+use serde::Serialize;
+
 // Boltzmann's constant
 const K_B: f64 = 1.38064852e-23;
 const R: f64 = 8.3145;
@@ -261,11 +262,8 @@ pub fn mean_speed(mass: f64, temperature: f64) -> f64 {
 
 pub fn rms_speed(mass: f64, temperature: f64) -> f64 {
     // (( 3.0 * K_B * temperature) / mass).powf(0.5)
-    (( 3.0 * temperature * K_B) / (mass)).sqrt()
+    (( 3.0 * temperature * K_B) / (mass)).sqrt() * (1.0+thread_rng().gen_range(-0.5..=0.5))
 }
-
-use rand::{thread_rng, Rng};
-use serde::Serialize;
 
 fn generate_position(half_side_length: f64) -> Vector3D {
     let x = thread_rng().gen_range(-half_side_length..=half_side_length);
@@ -332,8 +330,6 @@ pub fn simulate<F: Fn(f64, f64) -> f64>(temp: f64, volume: f64, molecule_mass: f
         }
     }
 
-
-
     for collisions in &mut all_sides {
         collisions.sort_by(|k, j| k.time.partial_cmp(&j.time).unwrap());
     }
@@ -353,6 +349,6 @@ pub fn simulate<F: Fn(f64, f64) -> f64>(temp: f64, volume: f64, molecule_mass: f
         // println!("{:+e}", (cumulative_impulse/total_time)/b.side_area());
     }
 
-    return (all_sides, pressures)
+    return (all_sides, pressures);
     
 }
