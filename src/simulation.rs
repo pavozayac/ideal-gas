@@ -1,8 +1,5 @@
 use std::f64::INFINITY;
 use std::ops::{Add, Div, Index, IndexMut, Mul, Sub};
-use num::traits::Pow;
-use num::Float;
-use rand::prelude::{Distribution, SliceRandom};
 
 #[derive(Debug, Copy, Clone, Serialize)]
 pub struct Vector3D {
@@ -92,7 +89,7 @@ impl Vector3D {
         }
     }
 
-    fn magnitude(&self) -> f64 {
+    pub fn magnitude(&self) -> f64 {
         (self.x.powf(2.0) + self.y.powf(2.0) + self.z.powf(2.0)).sqrt()
     }
 
@@ -106,15 +103,15 @@ impl Vector3D {
 }
 
 #[derive(Clone, Copy, Debug)]
-struct Particle {
-    position: Vector3D,
-    velocity: Vector3D,
-    mass: f64,
-    last_contact: f64,
+pub struct Particle {
+    pub position: Vector3D,
+    pub velocity: Vector3D,
+    pub mass: f64,
+    pub last_contact: f64,
 }
 
 impl Particle {
-    fn new(position: Vector3D, velocity: Vector3D, mass: f64) -> Particle {
+    pub fn new(position: Vector3D, velocity: Vector3D, mass: f64) -> Particle {
         Particle {
             position,
             velocity,
@@ -242,30 +239,8 @@ use serde::Serialize;
 
 // Boltzmann's constant
 const K_B: f64 = 1.38064852e-23;
-const R: f64 = 8.3145;
-const NA: f64 = 6.02214e23;
 
-// From temperature in Kelvins!!!
-fn kinetic_energy(temperature: f64) -> f64 {
-    1.5 * K_B * temperature
-}
-
-pub fn mode_speed(mass: f64, temperature: f64) -> f64 {
-    // (( 3.0 * K_B * temperature) / mass).powf(0.5)
-    (( 2.0 * temperature * K_B) / (mass)).sqrt()
-}
-
-pub fn mean_speed(mass: f64, temperature: f64) -> f64 {
-    // (( 3.0 * K_B * temperature) / mass).powf(0.5)
-    (( 8.0 * temperature * K_B) / (mass*std::f64::consts::PI)).sqrt()
-}
-
-pub fn rms_speed(mass: f64, temperature: f64) -> f64 {
-    // (( 3.0 * K_B * temperature) / mass).powf(0.5)
-    (( 3.0 * temperature * K_B) / (mass)).sqrt() * (1.0+thread_rng().gen_range(-0.5..=0.5))
-}
-
-fn generate_position(half_side_length: f64) -> Vector3D {
+pub fn generate_position(half_side_length: f64) -> Vector3D {
     let x = thread_rng().gen_range(-half_side_length..=half_side_length);
     let y = thread_rng().gen_range(-half_side_length..=half_side_length);
     let z = thread_rng().gen_range(-half_side_length..=half_side_length);
@@ -273,26 +248,19 @@ fn generate_position(half_side_length: f64) -> Vector3D {
     Vector3D { x, y, z }
 }
 
-fn generate_velocity(speed: f64) -> Vector3D {
-    let x = thread_rng().gen_range(-1.0..=1.0);
-    let y = thread_rng().gen_range(-1.0..=1.0);
-    let z = thread_rng().gen_range(-1.0..=1.0);
+use rand::prelude::*;
+use rand_distr::StandardNormal;
 
-    let random_vector = Vector3D { x, y, z };
-    let unit = random_vector / random_vector.magnitude();
+pub fn generate_velocity(temperature: f64, mass: f64) -> Vector3D {
+    let x = ((temperature * K_B) / mass).sqrt() * thread_rng().sample::<f64, _>(StandardNormal);
+    let y = ((temperature * K_B) / mass).sqrt() * thread_rng().sample::<f64, _>(StandardNormal);
+    let z = ((temperature * K_B) / mass).sqrt() * thread_rng().sample::<f64, _>(StandardNormal);
 
-    unit * speed
+    Vector3D { x, y, z }
 }
 
-pub fn simulate<F: Fn(f64, f64) -> f64>(temp: f64, volume: f64, molecule_mass: f64, molecules_count: usize, speed_function: F) -> (Vec<Vec<Collision>>, Vec<f64>) {
+pub fn simulate (temp: f64, volume: f64, molecule_mass: f64, molecules_count: usize) -> (Vec<Vec<Collision>>, Vec<f64>) {
     let b = Box::new(volume);
-
-
-    // println!("{}", (b.half_side_length*2.0).powi(3));
-
-    println!("{:+e}", ((molecules_count as f64)*K_B*temp)/3.0);
-
-    // println!("{}", &molecule_mass);
 
     let mut all_sides: Vec<Vec<Collision>> = Vec::new();
 
@@ -300,28 +268,17 @@ pub fn simulate<F: Fn(f64, f64) -> f64>(temp: f64, volume: f64, molecule_mass: f
         all_sides.push(Vec::new());
     }
 
-    // let mut collisions: Vec<Collision> = Vec::new();
-
-    // println!("{}", mode_speed(molar_mass, temp));
-
     for _ in 0..molecules_count {  
         
         let mut part = Particle::new(
             generate_position(b.half_side_length),
-            generate_velocity(speed_function(molecule_mass, temp)),
-            molecule_mass,
+            generate_velocity(temp, molecule_mass),
+            molecule_mass
         );
 
-        // println!("{}", part.velocity.magnitude());
-
-
         while part.last_contact < 1.0 {
-            // println!("{}", &part.last_contact);
-            // println!("Vel1: {:?}", &part.velocity);
             let (time_delta, reflection) = b.calc_contact(part);
-            // println!("{}", &time_delta);
             part.update(time_delta);
-            // println!("Vel2: {:?}", &part.velocity);
 
             let col = Collision::from_particle(&part, b.half_side_length);
             all_sides[col.wall_index as usize].push(col);
@@ -345,10 +302,7 @@ pub fn simulate<F: Fn(f64, f64) -> f64>(temp: f64, volume: f64, molecule_mass: f
         }
         
         pressures.push((cumulative_impulse/total_time)/b.side_area());
-
-        // println!("{:+e}", (cumulative_impulse/total_time)/b.side_area());
     }
 
-    return (all_sides, pressures);
-    
+    return (all_sides, pressures);   
 }

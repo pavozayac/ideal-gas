@@ -28,8 +28,6 @@ fn main() {
             Utc::now().to_rfc3339().replace(":", "-").replace("-", "_").replace("+", "_").replace(".", "_")
         );
 
-        println!("{}", dir_path);
-
         fs::create_dir(Path::new(dir_path)).expect("Could not create dir.");
         let pressures_file = fs::File::create(Path::new(&format!(
             "{}/pressures.csv",
@@ -63,14 +61,13 @@ fn main() {
                 volume,
                 molecule_mass,
                 molecules_count,
-                rms_speed,
             );
             pressures.push(temp as f64);
             pressures.push(volume as f64);
 
             all_pressures.push(pressures);
 
-            if temp == 1 || temp == 500 {
+            if temp == 1 || temp == 200 {
                 for side in collisions {
                     let ind = side[0].wall_index;
                     let collisions_file = fs::File::create(Path::new(&format!(
@@ -114,8 +111,6 @@ fn main() {
             Utc::now().to_rfc3339().replace(":", "-").replace("-", "_").replace("+", "_").replace(".", "_")
         );
 
-        println!("{}", dir_path);
-
         fs::create_dir(Path::new(dir_path)).expect("Could not create dir.");
         let pressures_file = fs::File::create(Path::new(&format!(
             "{}/pressures.csv",
@@ -149,14 +144,13 @@ fn main() {
                 v,
                 molecule_mass,
                 molecules_count,
-                rms_speed,
             );
             pressures.push(temperature as f64);
             pressures.push(v as f64);
 
             all_pressures.push(pressures);
 
-            if vol == 1 || vol == 500 {
+            if vol == 1 || vol == 200 {
                 for side in collisions {
                     let ind = side[0].wall_index;
                     let collisions_file = fs::File::create(Path::new(&format!(
@@ -193,6 +187,37 @@ fn main() {
         }
 
         csv_p.flush().expect("Could not flush.");
+    } else if args[1] == "speeds" {
+        let dir_path = &format!(
+            "speeds-{}",
+            Utc::now().to_rfc3339().replace(":", "-").replace("-", "_").replace("+", "_").replace(".", "_")
+        );
+
+        let mut speeds = vec![];
+
+        for _ in 0..molecules_count {
+            let part = Particle::new(
+                generate_position(0.0),
+                generate_velocity(temperature, molecule_mass),
+                molecule_mass
+            );
+
+            speeds.push(part.velocity.magnitude());
+        }
+
+        
+
+        fs::create_dir(Path::new(dir_path)).expect("Could not create dir.");
+        let speeds_file = fs::File::create(Path::new(&format!(
+            "{}/speeds.csv",
+            dir_path
+        )))
+        .expect("Cannot open file");
+        let mut speeds_bw = BufWriter::new(speeds_file);
+        let mut csv_p = csv::Writer::from_writer(speeds_bw);
+
+        csv_p.serialize(&speeds).expect("Could not serialize speeds");
+        
     } else {
         panic!("No experiment chosen.");
     }
